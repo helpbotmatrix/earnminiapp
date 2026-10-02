@@ -27,8 +27,6 @@ export interface AdsConfig {
 
 let cachedConfig: AdsConfig | null = null;
 let adsgramSdkLoaded = false;
-let gigapubSdkLoaded = false;
-let monetagSdkLoaded = false;
 
 declare global {
   interface Window {
@@ -120,11 +118,8 @@ export const loadGigaPubSDK = async (projectId: string): Promise<boolean> => {
   if (!projectId) return false;
   const ok = await loadScript(`https://ad.gigapub.tech/script?id=${encodeURIComponent(projectId)}`);
   if (!ok) {
-    // backup region
     await loadScript(`https://ru-ad.gigapub.tech/script?id=${encodeURIComponent(projectId)}`);
   }
-  gigapubSdkLoaded = true;
-  // wait briefly for global
   for (let i = 0; i < 20; i++) {
     if (typeof window.showGiga === 'function') return true;
     await new Promise((r) => setTimeout(r, 100));
@@ -142,10 +137,8 @@ export const loadMonetagSDK = async (
   if (fn && typeof window[fn] === 'function') return true;
   if (!zoneId) return false;
 
-  // Prefer admin-provided script URL from Monetag dashboard
   const candidates = [
     scriptUrl,
-    // Common Monetag TMA tag hosts (dashboard may override via monetag_script_url)
     `https://libtl.com/sdk.js`,
   ].filter(Boolean) as string[];
 
@@ -156,7 +149,6 @@ export const loadMonetagSDK = async (
     });
     if (ok) break;
   }
-  monetagSdkLoaded = true;
   for (let i = 0; i < 25; i++) {
     if (fn && typeof window[fn] === 'function') return true;
     await new Promise((r) => setTimeout(r, 120));
@@ -211,12 +203,6 @@ async function playMonetag(
   }
 }
 
-/**
- * Secure rewarded flow (any of AdsGram / GigaPub / Monetag — chosen by admin):
- * 1) Backend creates one-time session + returns network credentials
- * 2) Client plays that network's ad until complete
- * 3) Backend marks session completed — reward APIs consume proof
- */
 export const showRewardedAd = async (
   purpose: string = 'direct',
   _customBlockId?: string
@@ -286,7 +272,6 @@ export const showRewardedAd = async (
   }
 };
 
-/** Clear cached config after admin changes */
 export const clearAdsConfigCache = () => {
   cachedConfig = null;
 };
