@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+**/wallet.json
+**/*.md
+frontend/primitives_designs
+artifacts

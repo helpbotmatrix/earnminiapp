@@ -1,0 +1,7 @@
+{
+  "useMockData": false,
+  "apiBaseUrl": "/api/v1",
+  "apiTimeoutMs": 15000,
+  "simulatedDelayMs": 0,
+  "enableTelegramVerification": true
+}
