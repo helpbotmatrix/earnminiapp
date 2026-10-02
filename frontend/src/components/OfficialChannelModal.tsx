@@ -46,7 +46,6 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
           }
           return;
         }
-        // No admin channel list => do not force modal UI for multi-list
         setMultiMode(false);
         const res = await getOfficialChannelStatus();
         if (res && res.success) {
@@ -71,10 +70,7 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
     setTimeout(onClose, 250);
   };
 
-  const handleJoinClick = (linkOverride?: string) => {
-    haptics.impact('medium');
-    const link = linkOverride || channelData.inviteLink || 'https://t.me/SpinCraftNews';
-
+  const openChannelLink = (link: string) => {
     // @ts-ignore
     const tg = window.Telegram?.WebApp;
     if (tg?.openTelegramLink) {
@@ -82,7 +78,21 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
     } else {
       window.open(link, '_blank');
     }
+  };
 
+  const handleJoinClick = () => {
+    haptics.impact('medium');
+    if (multiMode && requiredList.length > 0) {
+      const pending = requiredList.find((c) => !c.joined) || requiredList[0];
+      const link =
+        pending.invite_link ||
+        (pending.username
+          ? `https://t.me/${String(pending.username).replace(/^@/, '')}`
+          : channelData.inviteLink);
+      openChannelLink(link || 'https://t.me/SpinCraftNews');
+    } else {
+      openChannelLink(channelData.inviteLink || 'https://t.me/SpinCraftNews');
+    }
     setHasClickedJoin(true);
   };
 
@@ -117,7 +127,7 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
         haptics.playWinSound();
         throwConfetti();
         notifyToast(
-          `🎉 Channel Joined! Received +${awardedSpins} Free Spins & +${awardedDiamonds} Diamonds!`,
+          `Channel Joined! Received +${awardedSpins} Free Spins & +${awardedDiamonds} Diamonds!`,
           'success',
           5000
         );
@@ -157,7 +167,6 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
         WebkitBackdropFilter: 'blur(8px)'
       }}
     >
-      {/* Backdrop Dismiss */}
       <div
         onClick={handleClose}
         style={{
@@ -170,7 +179,6 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
         }}
       />
 
-      {/* Bottom Sheet Modal Container */}
       <div
         style={{
           width: '100%',
@@ -191,7 +199,6 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
           boxSizing: 'border-box'
         }}
       >
-        {/* Top Dismiss Button */}
         <button
           onClick={handleClose}
           style={{
@@ -212,10 +219,9 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
             zIndex: 20
           }}
         >
-          ✕
+          X
         </button>
 
-        {/* Inner Glass Card */}
         <div
           style={{
             width: '100%',
@@ -230,7 +236,6 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
             WebkitBackdropFilter: 'blur(10px)'
           }}
         >
-          {/* Telegram Brand Icon with Glowing Circle */}
           <div
             style={{
               width: '68px',
@@ -250,10 +255,6 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
                 d="M21.5 2.5L2.5 10.5L9.5 13.5L18.5 6.5L11.5 15.5L18.5 20.5L21.5 2.5Z"
                 fill="#ffffff"
               />
-              <path
-                d="M9.5 13.5V18.5L12.5 15.5L9.5 13.5Z"
-                fill="rgba(255, 255, 255, 0.7)"
-              />
             </svg>
           </div>
 
@@ -267,7 +268,7 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
               textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)'
             }}
           >
-            Join Official Channel
+            {multiMode ? 'Join Required Channels' : 'Join Official Channel'}
           </h2>
 
           <p
@@ -279,79 +280,37 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
               lineHeight: 1.3
             }}
           >
-            Get +{channelData.rewardSpins} Free Spins &amp; +{channelData.rewardDiamonds} Diamonds
+            {multiMode
+              ? `${requiredList.filter((c) => c.joined).length}/${requiredList.length} channels joined`
+              : `Get +${channelData.rewardSpins} Free Spins & +${channelData.rewardDiamonds} Diamonds`}
           </p>
 
-          {/* Reward Badges Showcase */}
-          <div
-            style={{
-              display: 'flex',
-              gap: '0.65rem',
-              justifyContent: 'center',
-              marginBottom: '1.25rem'
-            }}
-          >
-            {/* Free Spins Badge */}
-            <div
-              style={{
-                flex: 1,
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
-                borderRadius: '1rem',
-                padding: '0.65rem 0.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              <img
-                src="./assets/ticket_animated.gif"
-                alt="Spins"
-                style={{ width: '28px', height: '28px', objectFit: 'contain' }}
-              />
-              <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.85rem' }}>
-                +{channelData.rewardSpins} Spins
-              </span>
+          {multiMode && requiredList.length > 0 && (
+            <div style={{ textAlign: 'left', marginBottom: '1rem', maxHeight: 160, overflowY: 'auto' }}>
+              {requiredList.map((ch) => (
+                <div
+                  key={ch.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.4rem 0.5rem',
+                    marginBottom: 4,
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)',
+                    fontSize: '0.8rem',
+                    color: '#e2e8f0'
+                  }}
+                >
+                  <span>{ch.title || ch.username || `Channel ${ch.id}`}</span>
+                  <span style={{ color: ch.joined ? '#34d399' : '#fbbf24' }}>
+                    {ch.joined ? 'Joined' : 'Pending'}
+                  </span>
+                </div>
+              ))}
             </div>
+          )}
 
-            {/* Diamonds Badge */}
-            <div
-              style={{
-                flex: 1,
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
-                borderRadius: '1rem',
-                padding: '0.65rem 0.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.3rem'
-              }}
-            >
-              <img
-                src="./assets/diamond_animated.gif"
-                alt="Diamonds"
-                style={{ width: '28px', height: '28px', objectFit: 'contain' }}
-              />
-              <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.85rem' }}>
-                +{channelData.rewardDiamonds} 💎
-              </span>
-            </div>
-          </div>
-
-          <p
-            style={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '0.76rem',
-              margin: '0 0 1.25rem 0',
-              lineHeight: 1.4
-            }}
-          >
-            Subscribe to <span style={{ color: '#38bdf8', fontWeight: 700 }}>{channelData.username}</span> to unlock instant free spins, exclusive giveaway drops, and jackpot announcements!
-          </p>
-
-          {/* Action Button */}
           {!hasClickedJoin ? (
             <button
               onClick={handleJoinClick}
@@ -365,17 +324,13 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
                 fontWeight: 900,
                 fontSize: '1rem',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 230, 118, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.5)',
+                boxShadow: '0 4px 14px rgba(0, 230, 118, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '0.5rem',
-                transition: 'transform 0.1s ease'
+                gap: '0.5rem'
               }}
-              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
-              onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
-              <span>🚀</span>
               <span>Join Channel</span>
             </button>
           ) : (
@@ -394,26 +349,16 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
                 fontWeight: 900,
                 fontSize: '1rem',
                 cursor: isVerifying ? 'wait' : 'pointer',
-                boxShadow: '0 4px 14px rgba(56, 189, 248, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '0.5rem',
-                transition: 'transform 0.1s ease'
-              }}
-              onMouseDown={(e) => {
-                if (!isVerifying) e.currentTarget.style.transform = 'scale(0.98)';
-              }}
-              onMouseUp={(e) => {
-                if (!isVerifying) e.currentTarget.style.transform = 'scale(1)';
+                gap: '0.5rem'
               }}
             >
-              <span>🔍</span>
-              <span>{isVerifying ? 'Verifying Membership...' : 'Verify Membership'}</span>
+              <span>{isVerifying ? 'Verifying...' : 'Verify Membership'}</span>
             </button>
           )}
 
-          {/* Re-open channel link if already clicked */}
           {hasClickedJoin && (
             <div
               onClick={handleJoinClick}
@@ -425,7 +370,7 @@ export const OfficialChannelModal: React.FC<OfficialChannelModalProps> = ({
                 cursor: 'pointer'
               }}
             >
-              Didn't join yet? Click here to open channel again
+              Did not join yet? Open channel again
             </div>
           )}
         </div>
