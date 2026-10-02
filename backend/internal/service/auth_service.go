@@ -86,9 +86,8 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 
 	if referrerTGID != nil && *referrerTGID > 0 && *referrerTGID != authData.User.ID {
 		// Store pending referrer; only counts after channel gate (or immediately if no required channels)
-		_, _ = s.userRepo.SetPendingReferrerTG(ctx, user.ID, *referrerTGID)
+		_ = s.userRepo.SetPendingReferrerTG(ctx, user.ID, *referrerTGID)
 	}
-
 
 	// If newly registered user, handle rewards
 	if isNew {
@@ -116,7 +115,7 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+%d Free Spins", refConfig.WelcomeSpins))
 			}
 			if refConfig.WelcomeDiamonds > 0 {
-				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+%d 💎", refConfig.WelcomeDiamonds))
+				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+%d diamonds", refConfig.WelcomeDiamonds))
 			}
 			if refConfig.WelcomeUSD > 0 {
 				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+$%.2f", refConfig.WelcomeUSD))
@@ -135,7 +134,7 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 				AmountSpins:    refConfig.WelcomeSpins,
 				Status:         "completed",
 				ReferenceID:    fmt.Sprintf("WELCOME-REF-%d", user.ID),
-				Description:    fmt.Sprintf("%s for joining via invite link! 🎁", welcomeText),
+				Description:    fmt.Sprintf("%s for joining via invite link!", welcomeText),
 			})
 
 			// 2. Grant rewards to the referrer
@@ -145,7 +144,7 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 				referrerDesc = append(referrerDesc, fmt.Sprintf("+%d Free Spins", refConfig.ReferrerSpins))
 			}
 			if refConfig.ReferrerDiamonds > 0 {
-				referrerDesc = append(referrerDesc, fmt.Sprintf("+%d 💎", refConfig.ReferrerDiamonds))
+				referrerDesc = append(referrerDesc, fmt.Sprintf("+%d diamonds", refConfig.ReferrerDiamonds))
 			}
 			if refConfig.ReferrerUSD > 0 {
 				referrerDesc = append(referrerDesc, fmt.Sprintf("+$%.2f", refConfig.ReferrerUSD))
@@ -164,7 +163,7 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 				AmountSpins:    refConfig.ReferrerSpins,
 				Status:         "completed",
 				ReferenceID:    fmt.Sprintf("REF-%d-%d", *user.ReferrerID, user.ID),
-				Description:    fmt.Sprintf("%s for inviting a friend! 👥", referrerText),
+				Description:    fmt.Sprintf("%s for inviting a friend!", referrerText),
 			})
 
 			// 3. Notify the referrer in private Telegram chat
@@ -172,10 +171,9 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 				referrer, _ := s.userRepo.GetByID(ctx, *user.ReferrerID)
 				if referrer != nil && referrer.TelegramID != 0 {
 					notifyText := fmt.Sprintf(
-						"🎉 <b>New Referral Joined Your Team!</b> 👥\n\n"+
-							"👤 <b>%s</b> just launched EarnMiniApp using your invite link!\n\n"+
-							"🎁 <b>Your Reward:</b> %s credited to your balance 🎰\n"+
-							"🏆 Keep inviting friends to climb the Referral Leaderboard!",
+						"<b>New Referral Joined Your Team!</b>\n\n"+
+							"<b>%s</b> just launched using your invite link!\n\n"+
+							"<b>Your Reward:</b> %s credited to your balance",
 						user.FirstName,
 						referrerText,
 					)
