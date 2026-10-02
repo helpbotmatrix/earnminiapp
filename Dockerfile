@@ -13,10 +13,10 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # ----- Backend build -----
-# gin v1.12 requires Go >= 1.25 (was failing on golang:1.23-alpine)
-FROM golang:1.25-alpine AS backend-builder
+# Use widely-available Go 1.23 image; gin pinned to v1.10 in go.mod (v1.12 needs Go 1.25)
+FROM golang:1.23-alpine AS backend-builder
 WORKDIR /app
-ENV GOTOOLCHAIN=auto
+ENV GOTOOLCHAIN=local
 RUN apk add --no-cache git ca-certificates tzdata
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
