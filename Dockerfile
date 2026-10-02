@@ -1,6 +1,6 @@
-# ═══════════════════════════════════════════════════════════════
+# ===============================================================
 # EarnMiniApp — Railway Production Image (Frontend + Backend)
-# ═══════════════════════════════════════════════════════════════
+# ===============================================================
 
 # ----- Frontend build -----
 FROM node:22-alpine AS frontend-builder
@@ -8,14 +8,15 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --omit=dev=false
 COPY frontend/ ./
-# API URL injected at build time; empty = same-origin /api/v1 (Railway single service)
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # ----- Backend build -----
-FROM golang:1.23-alpine AS backend-builder
+# gin v1.12 requires Go >= 1.25 (was failing on golang:1.23-alpine)
+FROM golang:1.25-alpine AS backend-builder
 WORKDIR /app
+ENV GOTOOLCHAIN=auto
 RUN apk add --no-cache git ca-certificates tzdata
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
