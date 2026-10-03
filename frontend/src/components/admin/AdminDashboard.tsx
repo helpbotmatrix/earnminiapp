@@ -28,12 +28,30 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+function isBrowserAdminRoute() {
+  if (typeof window === 'undefined') return true;
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  return path === '/became-admin' || path.startsWith('/became-admin/') || path === '/admin-panel';
+}
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onLogout }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [walletStatus, setWalletStatus] = useState<AdminWalletStatus | null>(null);
   const [syncingWallet, setSyncingWallet] = useState(false);
+
+  // Block embedding inside Mini App shell — force browser /became-admin
+  useEffect(() => {
+    if (isBrowserAdminRoute()) return;
+    const url = window.location.origin + '/became-admin/';
+    // @ts-ignore
+    const tg = window.Telegram?.WebApp;
+    notifyToast('Admin is browser-only — opening /became-admin/', 'info', 3500);
+    if (tg?.openLink) tg.openLink(url);
+    else window.location.href = url;
+    onBackToApp();
+  }, [onBackToApp]);
 
   const loadWalletStatus = async () => {
     setSyncingWallet(true);
@@ -48,6 +66,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
   };
 
   useEffect(() => {
+    if (!isBrowserAdminRoute()) return;
     const checkVaultInitialization = async () => {
       try {
         const res = await adminService.getMasterVaultStatus();
@@ -68,6 +87,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
     notifyToast('Admin session locked', 'info', 2500);
     onLogout();
   };
+
+  if (!isBrowserAdminRoute()) {
+    return (
+      <div style={{ minHeight: '100dvh', background: '#070a12', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+        Redirecting to browser admin…
+      </div>
+    );
+  }
 
   const renderActiveModule = () => {
     switch (activeTab) {
@@ -217,10 +244,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
                     fontWeight: 800,
                   }}
                 >
-                  ${
-                    Number(walletStatus.usdtBalance ?? walletStatus.usdt_balance ?? 0).toFixed(2)
-                  }{' '}
-                  USDT
+                  ${Number(walletStatus.usdtBalance ?? walletStatus.usdt_balance ?? 0).toFixed(2)} USDT
                 </div>
                 <button
                   type="button"
@@ -245,22 +269,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
             )}
             <button
               type="button"
-              onClick={onBackToApp}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#ffffff',
-                borderRadius: '7px',
-                padding: '0.4rem 0.8rem',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              App
-            </button>
-            <button
-              type="button"
               onClick={handleLogout}
               style={{
                 background: 'rgba(239, 68, 68, 0.1)',
@@ -278,14 +286,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
           </div>
         </div>
 
-        <div
-          style={{
-            flex: 1,
-            padding: '1rem 1.1rem',
-            overflowY: 'auto',
-            boxSizing: 'border-box',
-          }}
-        >
+        <div style={{ flex: 1, padding: '1rem 1.1rem', overflowY: 'auto', boxSizing: 'border-box' }}>
           {renderActiveModule()}
         </div>
       </div>
