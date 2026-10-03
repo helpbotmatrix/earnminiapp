@@ -30,6 +30,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onLogout }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [walletStatus, setWalletStatus] = useState<AdminWalletStatus | null>(null);
   const [syncingWallet, setSyncingWallet] = useState(false);
@@ -46,7 +47,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
     }
   };
 
-  // Initialization check on dashboard boot
   useEffect(() => {
     const checkVaultInitialization = async () => {
       try {
@@ -110,232 +110,184 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToApp, onL
     <div
       style={{
         minHeight: '100dvh',
+        height: '100dvh',
         background: '#070a12',
         color: '#f8fafc',
         display: 'flex',
-        flexDirection: 'column',
-        boxSizing: 'border-box'
+        flexDirection: 'row',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
-      {/* First-Time Master Vault Setup Wizard Modal */}
       <VaultSetupWizardModal
         isOpen={showSetupWizard}
         onInitialized={() => setShowSetupWizard(false)}
         onCancel={onBackToApp}
       />
-
-      {/* Human-Readable Admin Diagnostic & Solution Popup */}
       <AdminDiagnosticModal />
 
-      {/* Executive Dark Top Header */}
-      <div
-        style={{
-          background: '#090d16',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '0.65rem 0.85rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.6rem',
-          position: 'sticky',
-          top: 0,
-          zIndex: 60
+      <AdminSidebar
+        activeTab={activeTab}
+        onSelectTab={(tab) => {
+          haptics.impact('light');
+          setActiveTab(tab);
         }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <div
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '6px',
-              background: '#ffffff',
-              color: '#070a12',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '0.85rem'
-            }}
-          >
-            ⚙
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff', letterSpacing: '-0.2px' }}>
-                Admin Console
-              </span>
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+      />
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100dvh', overflow: 'hidden' }}>
+        <div
+          style={{
+            background: '#090d16',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '0.65rem 0.85rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.6rem',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                background: '#ffffff',
+                color: '#070a12',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: '0.85rem',
+              }}
+            >
+              A
+            </div>
+            <div>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>Admin Console</span>
               <span
                 style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  color: '#94a3b8',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  marginLeft: 8,
+                  background: 'rgba(16,185,129,0.15)',
+                  color: '#6ee7b7',
+                  border: '1px solid rgba(16,185,129,0.35)',
                   padding: '0.1rem 0.4rem',
                   borderRadius: '4px',
                   fontSize: '0.65rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.5px'
+                  fontWeight: 700,
                 }}
               >
-                PROD
+                LIVE
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Action Controls & Live Wallet Balances */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-          {/* Live Balances Strip */}
-          {walletStatus && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-              {/* BNB Gas Badge */}
-              <div
-                title="Master Vault BNB Gas Reserve"
-                style={{
-                  background: (walletStatus.lowBnbGasWarning || (walletStatus.bnbBalance ?? walletStatus.bnb_balance ?? 0) < 0.01)
-                    ? 'rgba(234, 179, 8, 0.15)'
-                    : 'rgba(56, 189, 248, 0.12)',
-                  border: (walletStatus.lowBnbGasWarning || (walletStatus.bnbBalance ?? walletStatus.bnb_balance ?? 0) < 0.01)
-                    ? '1px solid rgba(234, 179, 8, 0.4)'
-                    : '1px solid rgba(56, 189, 248, 0.3)',
-                  color: (walletStatus.lowBnbGasWarning || (walletStatus.bnbBalance ?? walletStatus.bnb_balance ?? 0) < 0.01)
-                    ? '#fde047'
-                    : '#38bdf8',
-                  padding: '0.25rem 0.6rem',
-                  borderRadius: '7px',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }}
-              >
-                <span>⛽</span>
-                <span>{(walletStatus.bnbBalance ?? walletStatus.bnb_balance ?? 0.0524)} BNB</span>
-              </div>
-
-              {/* Low Gas Warning Alert */}
-              {(walletStatus.lowBnbGasWarning || (walletStatus.bnbBalance ?? walletStatus.bnb_balance ?? 0) < 0.01) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {walletStatus && (
+              <>
                 <div
-                  title="Refill BNB to enable automated instant payouts"
                   style={{
-                    background: 'rgba(239, 68, 68, 0.15)',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                    color: '#f87171',
-                    padding: '0.25rem 0.5rem',
+                    background: 'rgba(56, 189, 248, 0.12)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    color: '#38bdf8',
+                    padding: '0.25rem 0.6rem',
                     borderRadius: '7px',
-                    fontSize: '0.72rem',
-                    fontWeight: 800
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
                   }}
                 >
-                  ⚠️ Low Gas
+                  {(walletStatus.bnbBalance ?? walletStatus.bnb_balance ?? 0).toFixed?.(4) ??
+                    walletStatus.bnbBalance ??
+                    walletStatus.bnb_balance ??
+                    0}{' '}
+                  BNB
                 </div>
-              )}
-
-              {/* USDT Treasury Badge */}
-              <div
-                title="Master Vault USDT Treasury Balance"
-                style={{
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#34d399',
-                  padding: '0.25rem 0.6rem',
-                  borderRadius: '7px',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }}
-              >
-                <span>💵</span>
-                <span>${(walletStatus.usdtBalance ?? walletStatus.usdt_balance ?? 250.75).toFixed(2)} USDT</span>
-              </div>
-
-              {/* Refresh Button */}
-              <button
-                onClick={() => {
-                  haptics.impact('light');
-                  loadWalletStatus();
-                  notifyToast('🔄 Master Vault balances refreshed', 'info', 2500);
-                }}
-                disabled={syncingWallet}
-                title="Refresh Balances"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  color: '#cbd5e1',
-                  borderRadius: '6px',
-                  padding: '0.25rem 0.45rem',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem'
-                }}
-              >
-                {syncingWallet ? '⏳' : '🔄'}
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={onBackToApp}
-            style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#ffffff',
-              borderRadius: '7px',
-              padding: '0.4rem 0.8rem',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              transition: 'background 0.15s ease'
-            }}
-          >
-            <span>📱</span>
-            <span>Return to App</span>
-          </button>
-
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              color: '#f87171',
-              borderRadius: '7px',
-              padding: '0.4rem 0.75rem',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            Lock 🔒
-          </button>
+                <div
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#34d399',
+                    padding: '0.25rem 0.6rem',
+                    borderRadius: '7px',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  ${
+                    Number(walletStatus.usdtBalance ?? walletStatus.usdt_balance ?? 0).toFixed(2)
+                  }{' '}
+                  USDT
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptics.impact('light');
+                    loadWalletStatus();
+                  }}
+                  disabled={syncingWallet}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#cbd5e1',
+                    borderRadius: '6px',
+                    padding: '0.25rem 0.45rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {syncingWallet ? '...' : 'Refresh'}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={onBackToApp}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+                borderRadius: '7px',
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              App
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                color: '#f87171',
+                borderRadius: '7px',
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Lock
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Navigation Tabs */}
-      <AdminSidebar
-        activeTab={activeTab}
-        onSelectTab={(t) => {
-          haptics.impact('light');
-          setActiveTab(t);
-        }}
-      />
-
-      {/* Main Module Content Area */}
-      <div
-        style={{
-          flex: 1,
-          padding: '0.85rem 0.65rem',
-          maxWidth: '1200px',
-          width: '100%',
-          margin: '0 auto',
-          boxSizing: 'border-box'
-        }}
-      >
-        {renderActiveModule()}
+        <div
+          style={{
+            flex: 1,
+            padding: '1rem 1.1rem',
+            overflowY: 'auto',
+            boxSizing: 'border-box',
+          }}
+        >
+          {renderActiveModule()}
+        </div>
       </div>
     </div>
   );
