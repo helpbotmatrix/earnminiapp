@@ -2,88 +2,204 @@ import React from 'react';
 
 export type AdminTab =
   | 'overview'
+  | 'withdrawals'
+  | 'users'
+  | 'tasks'
   | 'wheel'
   | 'daily'
   | 'referrals'
   | 'contests'
   | 'raffles'
-  | 'tasks'
-  | 'users'
-  | 'withdrawals'
   | 'giftcodes'
   | 'sweeps'
   | 'support'
-  | 'subadmins'
   | 'broadcast'
+  | 'subadmins'
   | 'settings';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
   onSelectTab: (tab: AdminTab) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-const TABS: { id: AdminTab; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
-  { id: 'wheel', label: 'Wheel RNG', icon: '🎡' },
-  { id: 'daily', label: 'Daily Streak', icon: '📅' },
-  { id: 'referrals', label: 'Referral Rules', icon: '👥' },
-  { id: 'contests', label: 'Contests', icon: '🏆' },
-  { id: 'raffles', label: 'Raffles', icon: '🎟️' },
-  { id: 'tasks', label: 'Tasks', icon: '📋' },
-  { id: 'users', label: 'Users', icon: '👥' },
-  { id: 'withdrawals', label: 'Cashouts', icon: '💸' },
-  { id: 'giftcodes', label: 'Gift Codes', icon: '🎁' },
-  { id: 'sweeps', label: 'Sweeps', icon: '🔍' },
-  { id: 'support', label: 'Support', icon: '📩' },
-  { id: 'subadmins', label: 'Sub-Admins', icon: '🛡️' },
-  { id: 'broadcast', label: 'Broadcast', icon: '📢' }
+const GROUPS: { title: string; items: { id: AdminTab; label: string; icon: string }[] }[] = [
+  {
+    title: 'Core',
+    items: [
+      { id: 'overview', label: 'Dashboard', icon: '\uD83D\uDCCA' },
+      { id: 'withdrawals', label: 'Withdrawals', icon: '\uD83D\uDCB8' },
+      { id: 'users', label: 'Users', icon: '\uD83D\uDC65' },
+    ],
+  },
+  {
+    title: 'Engagement',
+    items: [
+      { id: 'tasks', label: 'Tasks', icon: '\uD83D\uDCCB' },
+      { id: 'wheel', label: 'Spin Wheel', icon: '\uD83C\uDFB0' },
+      { id: 'daily', label: 'Daily Check-in', icon: '\uD83D\uDCC5' },
+      { id: 'referrals', label: 'Referrals', icon: '\uD83D\uDD17' },
+      { id: 'giftcodes', label: 'Gift Codes', icon: '\uD83C\uDF81' },
+    ],
+  },
+  {
+    title: 'Events',
+    items: [
+      { id: 'contests', label: 'Contests', icon: '\uD83C\uDFC6' },
+      { id: 'raffles', label: 'Raffles', icon: '\uD83C\uDF9F\uFE0F' },
+      { id: 'broadcast', label: 'Broadcast', icon: '\uD83D\uDCE2' },
+    ],
+  },
+  {
+    title: 'Finance & Ops',
+    items: [
+      { id: 'sweeps', label: 'Sweeps / Vault', icon: '\uD83C\uDFE6' },
+      { id: 'support', label: 'Support', icon: '\uD83D\uDCE9' },
+      { id: 'subadmins', label: 'Sub-Admins', icon: '\uD83D\uDEE1\uFE0F' },
+      { id: 'settings', label: 'Settings & Ads', icon: '\u2699\uFE0F' },
+    ],
+  },
 ];
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, onSelectTab }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({
+  activeTab,
+  onSelectTab,
+  collapsed = false,
+  onToggleCollapse,
+}) => {
   return (
-    <div
-      className="hide-scrollbar"
+    <aside
       style={{
+        width: collapsed ? 72 : 240,
+        minWidth: collapsed ? 72 : 240,
+        height: '100%',
+        background: 'linear-gradient(180deg, #0b1220 0%, #070b14 100%)',
+        borderRight: '1px solid rgba(148,163,184,0.12)',
         display: 'flex',
-        gap: '0.35rem',
-        overflowX: 'auto',
-        padding: '0.5rem 1rem',
-        background: '#090d16',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        boxSizing: 'border-box'
+        flexDirection: 'column',
+        transition: 'width 0.2s ease',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
-      {TABS.map((tab) => {
-        const isActive = activeTab === tab.id;
-        return (
+      <div
+        style={{
+          padding: collapsed ? '1rem 0.5rem' : '1.1rem 1rem',
+          borderBottom: '1px solid rgba(148,163,184,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 8,
+        }}
+      >
+        {!collapsed && (
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#f8fafc', letterSpacing: '-0.02em' }}>
+              Admin Panel
+            </div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2 }}>Earn Mini App</div>
+          </div>
+        )}
+        {onToggleCollapse && (
           <button
-            key={tab.id}
-            onClick={() => onSelectTab(tab.id)}
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expand' : 'Collapse'}
             style={{
-              background: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.04)',
-              border: isActive
-                ? '1px solid #ffffff'
-                : '1px solid rgba(255, 255, 255, 0.08)',
-              color: isActive ? '#090d16' : '#94a3b8',
-              borderRadius: '8px',
-              padding: '0.45rem 0.8rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              fontSize: '0.8rem',
-              fontWeight: isActive ? 700 : 500,
-              whiteSpace: 'nowrap',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#94a3b8',
+              borderRadius: 8,
+              width: 32,
+              height: 32,
               cursor: 'pointer',
-              boxShadow: isActive ? '0 2px 8px rgba(255, 255, 255, 0.2)' : 'none',
-              transition: 'all 0.15s ease'
+              fontSize: 14,
             }}
           >
-            <span style={{ fontSize: '0.88rem' }}>{tab.icon}</span>
-            <span>{tab.label}</span>
+            {collapsed ? '\u00bb' : '\u00ab'}
           </button>
-        );
-      })}
-    </div>
+        )}
+      </div>
+
+      <nav
+        className="hide-scrollbar"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: collapsed ? '0.6rem 0.35rem' : '0.75rem 0.65rem',
+        }}
+      >
+        {GROUPS.map((group) => (
+          <div key={group.title} style={{ marginBottom: '1rem' }}>
+            {!collapsed && (
+              <div
+                style={{
+                  fontSize: '0.62rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  padding: '0.35rem 0.55rem',
+                  marginBottom: 4,
+                }}
+              >
+                {group.title}
+              </div>
+            )}
+            {group.items.map((item) => {
+              const active = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelectTab(item.id)}
+                  title={item.label}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: collapsed ? 0 : 10,
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    padding: collapsed ? '0.65rem 0' : '0.55rem 0.65rem',
+                    marginBottom: 3,
+                    borderRadius: 10,
+                    border: active
+                      ? '1px solid rgba(52, 211, 153, 0.45)'
+                      : '1px solid transparent',
+                    background: active
+                      ? 'linear-gradient(90deg, rgba(16,185,129,0.2) 0%, rgba(16,185,129,0.06) 100%)'
+                      : 'transparent',
+                    color: active ? '#6ee7b7' : '#94a3b8',
+                    cursor: 'pointer',
+                    fontWeight: active ? 700 : 500,
+                    fontSize: '0.82rem',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>{item.icon}</span>
+                  {!collapsed && <span>{item.label}</span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {!collapsed && (
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            borderTop: '1px solid rgba(148,163,184,0.1)',
+            fontSize: '0.68rem',
+            color: '#475569',
+          }}
+        >
+          Withdrawals → confirm / reject
+          <br />
+          Settings → ads, limits, fees
+        </div>
+      )}
+    </aside>
   );
 };
