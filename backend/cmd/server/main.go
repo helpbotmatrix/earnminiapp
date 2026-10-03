@@ -280,9 +280,12 @@ func main() {
 			adminGroup.POST("/sub-admins", middleware.RequireMainAdmin(), adminHandler.CreateSubAdmin)
 			adminGroup.PUT("/sub-admins/:id", middleware.RequireMainAdmin(), adminHandler.UpdateSubAdmin)
 			adminGroup.DELETE("/sub-admins/:id", middleware.RequireMainAdmin(), adminHandler.DeleteSubAdmin)
-			adminGroup.GET("/broadcasts", adminHandler.GetBroadcasts)
-			adminGroup.POST("/broadcasts", adminHandler.CreateBroadcast)
-			adminGroup.POST("/broadcasts/:id/send", adminHandler.SendBroadcast)
+			// Broadcast — correct method names on AdminHandler
+			adminGroup.GET("/broadcast", adminHandler.GetBroadcastJobs)
+			adminGroup.POST("/broadcast", adminHandler.CreateBroadcastJob)
+			adminGroup.GET("/broadcast/:id", adminHandler.GetBroadcastJob)
+			adminGroup.POST("/broadcast/:id/cancel", adminHandler.CancelBroadcastJob)
+			adminGroup.POST("/broadcast/preview", adminHandler.PreviewBroadcast)
 		}
 	}
 
