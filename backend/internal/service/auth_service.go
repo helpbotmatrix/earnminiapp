@@ -49,6 +49,9 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 	if err != nil {
 		return nil, fmt.Errorf("invalid telegram authentication: %w", err)
 	}
+	if authData.User == nil {
+		return nil, fmt.Errorf("telegram user payload is missing")
+	}
 
 	var referrerTGID *int64
 	param := authData.StartParam
@@ -63,15 +66,9 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 	}
 
 	photoURL := authData.User.PhotoURL
-
 	user, isNew, err := s.userRepo.UpsertFromTelegram(
-		ctx,
-		authData.User.ID,
-		authData.User.Username,
-		authData.User.FirstName,
-		photoURL,
-		authData.User.IsPremium,
-		nil,
+		ctx, authData.User.ID, authData.User.Username, authData.User.FirstName,
+		photoURL, authData.User.IsPremium, nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sync user: %w", err)
@@ -104,33 +101,41 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 
 		if user.ReferrerID != nil {
 			user, _ = s.userRepo.MutateBalances(ctx, user.ID, refConfig.WelcomeSpins, refConfig.WelcomeDiamonds, refConfig.WelcomeUSD, 0)
+			_ = s.txRepo.Create(ctx, &model.Transaction{
+				UserID: user.ID, Category: "team", Title: "Welcome Referral Gift",
+				AmountUSD: refConfig.WelcomeUSD, AmountDiamonds: refConfig.WelcomeDiamonds, AmountSpins: refConfig.WelcomeSpins,
+				Status: "completed", ReferenceID: fmt.Sprintf("WELCOME-%d", user.ID),
+				Description: "Welcome gift for joining via invite",
+			})
 			_, _ = s.userRepo.MutateBalances(ctx, *user.ReferrerID, refConfig.ReferrerSpins, refConfig.ReferrerDiamonds, refConfig.ReferrerUSD, 0)
+			_ = s.txRepo.Create(ctx, &model.Transaction{
+				UserID: *user.ReferrerID, Category: "team", Title: fmt.Sprintf("New Referral (%s)", user.FirstName),
+				AmountUSD: refConfig.ReferrerUSD, AmountDiamonds: refConfig.ReferrerDiamonds, AmountSpins: refConfig.ReferrerSpins,
+				Status: "completed", ReferenceID: fmt.Sprintf("REF-%d-%d", *user.ReferrerID, user.ID),
+				Description: "Reward for inviting a friend",
+			})
 			if s.botClient != nil {
 				referrer, _ := s.userRepo.GetByID(ctx, *user.ReferrerID)
 				if referrer != nil && referrer.TelegramID != 0 {
 					_ = s.botClient.SendMessage(referrer.TelegramID,
-						fmt.Sprintf("🎉 <b>New Referral!</b>\n\n👤 <b>%s</b> joined via your link.", user.FirstName), nil)
+						fmt.Sprintf("🎉 <b>New Referral Joined!</b>\n\n👤 <b>%s</b> joined via your invite link.", user.FirstName), nil)
 				}
 			}
-		} else if user.ReferrerID == nil {
-			user, _ = s.userRepo.MutateBalances(ctx, user.ID, refConfig.InitialOrganicSpins, 0, 0, 0)
+		} else if refConfig.InitialOrganicSpins > 0 && refConfig.InitialOrganicSpins != 12 {
+			delta := refConfig.InitialOrganicSpins - 12
+			user, _ = s.userRepo.MutateBalances(ctx, user.ID, delta, 0, 0, 0)
 		}
-	}
-
-	isAdmin := false
-	if s.cfg != nil {
-		isAdmin = s.cfg.IsAdminTelegramID(authData.User.ID)
 	}
 
 	token, err := s.jwtManager.GenerateToken(user.ID, user.TelegramID, user.Username)
 	if err != nil {
-		return nil, fmt.Errorf("failed to issue session: %w", err)
+		return nil, fmt.Errorf("failed to generate session token: %w", err)
 	}
 
-	return &model.AuthResponse{
-		Token:     token,
-		User:      user,
-		IsNewUser: isNew,
-		IsAdmin:   isAdmin,
-	}, nil
+	userResp := ToUserResponse(user)
+	if s.cfg != nil && s.cfg.IsAdminTelegramID(user.TelegramID) {
+		userResp.IsAdmin = true
+	}
+
+	return &model.AuthResponse{Token: token, User: userResp}, nil
 }
