@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+// Absolute base so /became-admin/ and other deep routes load /assets/* correctly
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: '/',
 })
