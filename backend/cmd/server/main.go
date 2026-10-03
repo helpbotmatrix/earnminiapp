@@ -225,7 +225,7 @@ func main() {
 			adminGroup.POST("/withdrawals/:id/payout", adminHandler.ProcessWithdrawalPayout)
 			adminGroup.POST("/withdrawals/:id/manual-paid", adminHandler.MarkWithdrawalManualPaid)
 			adminGroup.POST("/withdrawals/:id/reject", adminHandler.RejectWithdrawal)
-			adminGroup.GET("/users", adminHandler.GetUsers)
+			adminGroup.GET("/users", adminHandler.ListUsers)
 			adminGroup.GET("/users/lookup", adminHandler.LookupUserDetail)
 			adminGroup.POST("/users/:id/adjust-balance", adminHandler.AdjustUserBalance)
 			adminGroup.POST("/users/:id/ban", adminHandler.ToggleBanUser)
@@ -280,7 +280,6 @@ func main() {
 			adminGroup.POST("/sub-admins", middleware.RequireMainAdmin(), adminHandler.CreateSubAdmin)
 			adminGroup.PUT("/sub-admins/:id", middleware.RequireMainAdmin(), adminHandler.UpdateSubAdmin)
 			adminGroup.DELETE("/sub-admins/:id", middleware.RequireMainAdmin(), adminHandler.DeleteSubAdmin)
-			// Broadcast — correct method names on AdminHandler
 			adminGroup.GET("/broadcast", adminHandler.GetBroadcastJobs)
 			adminGroup.POST("/broadcast", adminHandler.CreateBroadcastJob)
 			adminGroup.GET("/broadcast/:id", adminHandler.GetBroadcastJob)
