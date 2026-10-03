@@ -50,11 +50,6 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 		return nil, fmt.Errorf("invalid telegram authentication: %w", err)
 	}
 
-	if authData.User == nil {
-		return nil, fmt.Errorf("telegram user payload is missing")
-	}
-
-	// Parse referrer if passed via startParam (e.g. "ref_123456789" or "123456789")
 	var referrerTGID *int64
 	param := authData.StartParam
 	if param == "" {
@@ -69,8 +64,6 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 
 	photoURL := authData.User.PhotoURL
 
-	// Defer referrer binding until required channels are joined (if any configured by admin).
-	// Always pass nil here; pending_referrer_tg is stored right after upsert when needed.
 	user, isNew, err := s.userRepo.UpsertFromTelegram(
 		ctx,
 		authData.User.ID,
@@ -85,11 +78,13 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 	}
 
 	if referrerTGID != nil && *referrerTGID > 0 && *referrerTGID != authData.User.ID {
-		// Store pending referrer; only counts after channel gate (or immediately if no required channels)
 		_ = s.userRepo.SetPendingReferrerTG(ctx, user.ID, *referrerTGID)
+		_ = s.userRepo.ApplyPendingReferrerIfNoGate(ctx, user.ID)
+		if refreshed, errR := s.userRepo.GetByID(ctx, user.ID); errR == nil && refreshed != nil {
+			user = refreshed
+		}
 	}
 
-	// If newly registered user, handle rewards
 	if isNew {
 		refConfig := model.ReferralRewardSettings{
 			InitialOrganicSpins: 12,
@@ -108,100 +103,34 @@ func (s *AuthService) AuthenticateTelegram(ctx context.Context, initDataRaw, sta
 		}
 
 		if user.ReferrerID != nil {
-			// 1. Grant welcome rewards to the invited new user
 			user, _ = s.userRepo.MutateBalances(ctx, user.ID, refConfig.WelcomeSpins, refConfig.WelcomeDiamonds, refConfig.WelcomeUSD, 0)
-			var welcomeDesc []string
-			if refConfig.WelcomeSpins > 0 {
-				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+%d Free Spins", refConfig.WelcomeSpins))
-			}
-			if refConfig.WelcomeDiamonds > 0 {
-				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+%d diamonds", refConfig.WelcomeDiamonds))
-			}
-			if refConfig.WelcomeUSD > 0 {
-				welcomeDesc = append(welcomeDesc, fmt.Sprintf("+$%.2f", refConfig.WelcomeUSD))
-			}
-			welcomeText := strings.Join(welcomeDesc, ", ")
-			if welcomeText == "" {
-				welcomeText = "+3 Free Spins"
-			}
-
-			_ = s.txRepo.Create(ctx, &model.Transaction{
-				UserID:         user.ID,
-				Category:       "team",
-				Title:          "Welcome Referral Gift",
-				AmountUSD:      refConfig.WelcomeUSD,
-				AmountDiamonds: refConfig.WelcomeDiamonds,
-				AmountSpins:    refConfig.WelcomeSpins,
-				Status:         "completed",
-				ReferenceID:    fmt.Sprintf("WELCOME-REF-%d", user.ID),
-				Description:    fmt.Sprintf("%s for joining via invite link!", welcomeText),
-			})
-
-			// 2. Grant rewards to the referrer
 			_, _ = s.userRepo.MutateBalances(ctx, *user.ReferrerID, refConfig.ReferrerSpins, refConfig.ReferrerDiamonds, refConfig.ReferrerUSD, 0)
-			var referrerDesc []string
-			if refConfig.ReferrerSpins > 0 {
-				referrerDesc = append(referrerDesc, fmt.Sprintf("+%d Free Spins", refConfig.ReferrerSpins))
-			}
-			if refConfig.ReferrerDiamonds > 0 {
-				referrerDesc = append(referrerDesc, fmt.Sprintf("+%d diamonds", refConfig.ReferrerDiamonds))
-			}
-			if refConfig.ReferrerUSD > 0 {
-				referrerDesc = append(referrerDesc, fmt.Sprintf("+$%.2f", refConfig.ReferrerUSD))
-			}
-			referrerText := strings.Join(referrerDesc, ", ")
-			if referrerText == "" {
-				referrerText = "+1 Free Spin"
-			}
-
-			_ = s.txRepo.Create(ctx, &model.Transaction{
-				UserID:         *user.ReferrerID,
-				Category:       "team",
-				Title:          fmt.Sprintf("New Referral (%s)", user.FirstName),
-				AmountUSD:      refConfig.ReferrerUSD,
-				AmountDiamonds: refConfig.ReferrerDiamonds,
-				AmountSpins:    refConfig.ReferrerSpins,
-				Status:         "completed",
-				ReferenceID:    fmt.Sprintf("REF-%d-%d", *user.ReferrerID, user.ID),
-				Description:    fmt.Sprintf("%s for inviting a friend!", referrerText),
-			})
-
-			// 3. Notify the referrer in private Telegram chat
 			if s.botClient != nil {
 				referrer, _ := s.userRepo.GetByID(ctx, *user.ReferrerID)
 				if referrer != nil && referrer.TelegramID != 0 {
-					notifyText := fmt.Sprintf(
-						"<b>New Referral Joined Your Team!</b>\n\n"+
-							"<b>%s</b> just launched using your invite link!\n\n"+
-							"<b>Your Reward:</b> %s credited to your balance",
-						user.FirstName,
-						referrerText,
-					)
-					_ = s.botClient.SendMessage(referrer.TelegramID, notifyText, nil)
+					_ = s.botClient.SendMessage(referrer.TelegramID,
+						fmt.Sprintf("🎉 <b>New Referral!</b>\n\n👤 <b>%s</b> joined via your link.", user.FirstName), nil)
 				}
 			}
-		} else {
-			// Direct organic user without invite link
-			if refConfig.InitialOrganicSpins > 0 && refConfig.InitialOrganicSpins != 12 {
-				delta := refConfig.InitialOrganicSpins - 12
-				user, _ = s.userRepo.MutateBalances(ctx, user.ID, delta, 0, 0, 0)
-			}
+		} else if user.ReferrerID == nil {
+			user, _ = s.userRepo.MutateBalances(ctx, user.ID, refConfig.InitialOrganicSpins, 0, 0, 0)
 		}
 	}
 
-	// Generate high-speed JWT session token
-	token, err := s.jwtManager.GenerateToken(user.ID, user.TelegramID, user.Username)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate session token: %w", err)
+	isAdmin := false
+	if s.cfg != nil {
+		isAdmin = s.cfg.IsAdminTelegramID(authData.User.ID)
 	}
 
-	userResp := ToUserResponse(user)
-	if s.cfg != nil && s.cfg.IsAdminTelegramID(user.TelegramID) {
-		userResp.IsAdmin = true
+	token, err := s.jwtManager.GenerateToken(user.ID, user.TelegramID, user.Username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue session: %w", err)
 	}
 
 	return &model.AuthResponse{
-		Token: token,
-		User:  userResp,
+		Token:     token,
+		User:      user,
+		IsNewUser: isNew,
+		IsAdmin:   isAdmin,
 	}, nil
 }
