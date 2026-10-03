@@ -255,7 +255,7 @@ func main() {
 			adminGroup.POST("/contests/:id/distribute-prizes", adminHandler.DistributeContestPrizes)
 			adminGroup.GET("/support/feedback", adminHandler.GetFeedbackList)
 			adminGroup.POST("/support/feedback/:id/resolve", adminHandler.ResolveFeedback)
-			adminGroup.GET("/tasks", adminHandler.GetTasks)
+			adminGroup.GET("/tasks", adminHandler.ListTasks)
 			adminGroup.POST("/tasks", adminHandler.CreateTask)
 			adminGroup.PUT("/tasks/:id", adminHandler.UpdateTask)
 			adminGroup.DELETE("/tasks/:id", adminHandler.DeleteTask)
